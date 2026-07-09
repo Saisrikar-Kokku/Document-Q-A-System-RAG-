@@ -10,7 +10,7 @@
 # ── Document Parsing (Phase 2) ──────────────────────────────────────────────
 # Force CPU-only PyTorch to save massive RAM/Disk space on Render Free Tier
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.3.0+cpu
+torch==2.13.0+cpu
 
 # Each format needs its own parser because PDFs, Word docs, and HTML have
 # completely different internal structures.
