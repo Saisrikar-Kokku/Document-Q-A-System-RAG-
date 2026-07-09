@@ -1,0 +1,32 @@
+# ── Byte-compiled / optimized / DLL files ──
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ── Virtual environment ──
+venv/
+.venv/
+
+# ── Environment variables ──
+.env
+
+# ── Your personal data (never commit this) ──
+data/*
+!data/.gitkeep
+
+# ── Vector database storage (managed by Docker) ──
+qdrant_storage/
+
+# ── IDE ──
+.vscode/
+.idea/
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Ingestion tracking database ──
+.ingestion_index.json
+
+# ── Backups ──
+*.zip

@@ -1,0 +1,110 @@
+# ============================================================================
+# Personal RAG Application — Python Dependencies
+# ============================================================================
+# This file lists every external package the project needs. Each is explained
+# below so you know exactly what you're installing and why.
+#
+# Install everything with:  pip install -r requirements.txt
+# ============================================================================
+
+# ── Document Parsing (Phase 2) ──────────────────────────────────────────────
+# Each format needs its own parser because PDFs, Word docs, and HTML have
+# completely different internal structures.
+
+PyPDF2>=3.0.0               # Reads PDF files — extracts text page by page.
+                            # Why PyPDF2: pure Python (no system dependencies),
+                            # handles most PDFs well. Alternative: pdfplumber
+                            # (better table extraction but heavier).
+
+python-docx>=1.1.0          # Reads .docx (Word) files — extracts text from
+                            # paragraphs and tables. Does NOT handle old .doc
+                            # format (that's a different binary format).
+
+beautifulsoup4>=4.12.0      # Parses HTML/web pages — strips tags, extracts
+                            # clean text. The standard tool for HTML parsing.
+
+lxml>=5.0.0                 # HTML/XML parser engine used by BeautifulSoup.
+                            # Much faster than Python's built-in html.parser.
+
+chardet>=5.0.0              # Detects text file encoding (UTF-8, Latin-1, etc.).
+                            # Without this, opening a file saved in the wrong
+                            # encoding would produce garbled text or crash.
+
+# ── Chunking (Phase 3) ─────────────────────────────────────────────────────
+# No external dependency — we build the chunker ourselves so every decision
+# (chunk size, overlap, split boundaries) is visible and tunable.
+
+# ── Embeddings (Phase 4) ───────────────────────────────────────────────────
+
+sentence-transformers>=3.0.0  # Runs embedding models locally. This is the
+                              # library that loads the neural network and
+                              # converts text → vectors. It wraps HuggingFace
+                              # transformers with a simpler API optimized for
+                              # sentence/paragraph embeddings.
+
+# NOTE: sentence-transformers will pull in torch (PyTorch) as a dependency.
+# PyTorch is ~800MB but is the industry-standard ML framework. On a 16GB
+# machine with CPU-only, it runs fine — just the first install takes a while.
+
+# ── Vector Database Client (Phase 5) ───────────────────────────────────────
+
+qdrant-client>=1.12.0       # Python client for the Qdrant vector database.
+                            # Qdrant itself runs in Docker; this is just the
+                            # library that talks to it over HTTP.
+                            # Why Qdrant over ChromaDB: Qdrant runs as a
+                            # standalone server (not embedded in your Python
+                            # process), supports metadata filtering, scales
+                            # to millions of vectors, and has a cloud version
+                            # with an identical API for future migration.
+
+# ── LLM Generation (Phase 7) ───────────────────────────────────────────────
+
+httpx>=0.27.0               # Modern async HTTP client. Used to call the
+                            # Ollama API (local LLM) and cloud APIs.
+                            # Why httpx over requests: async support, HTTP/2,
+                            # and it's what FastAPI recommends.
+
+google-genai>=1.0.0         # Google's Generative AI SDK — used for the
+                            # optional Gemini cloud LLM fallback.
+                            # Only needed if you want cloud generation.
+
+# ── API Layer (Phase 9) ────────────────────────────────────────────────────
+
+fastapi>=0.115.0            # Modern Python web framework for building APIs.
+                            # Auto-generates interactive API docs (Swagger UI),
+                            # supports async, validates request/response data
+                            # automatically using type hints.
+
+uvicorn>=0.32.0             # ASGI server that actually runs the FastAPI app.
+                            # FastAPI defines the routes; uvicorn serves them.
+                            # Think of it as: FastAPI = the menu, uvicorn = the waiter.
+
+python-multipart>=0.0.18    # Needed by FastAPI to handle file uploads
+                            # (for the /ingest endpoint where you upload docs).
+
+# ── Testing (Phase 11) ─────────────────────────────────────────────────────
+
+pytest>=8.0.0               # Python's most popular testing framework.
+                            # We'll use it to verify chunking logic and
+                            # retrieval correctness.
+
+pytest-asyncio>=0.24.0      # Plugin that lets pytest run async test functions
+                            # (needed because our API and some DB calls are async).
+
+# ── Utilities ──────────────────────────────────────────────────────────────
+
+pydantic>=2.0.0             # Data validation library — used to define strict
+                            # schemas (Document, Chunk, Query, etc.) so data
+                            # can't silently be malformed. FastAPI uses it too.
+                            # Already installed as a FastAPI dependency, but
+                            # listed explicitly because we use it directly.
+
+python-dotenv>=1.0.0        # Loads environment variables from a .env file.
+                            # Used for optional API keys (Gemini, etc.)
+                            # without hardcoding secrets in source code.
+
+rich>=13.0.0                # Pretty terminal output — colored logs, progress
+                            # bars, tables. Makes CLI output readable instead
+                            # of walls of plain text.
+
+boto3==1.43.44

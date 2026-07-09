@@ -1,0 +1,57 @@
+# ============================================================================
+# Docker Compose — Local Services for the RAG Application
+# ============================================================================
+# This file defines the external services the RAG app needs, currently just
+# the Qdrant vector database. Docker Compose lets you start/stop these with
+# a single command instead of manually installing and configuring each one.
+#
+# Usage:
+#   docker-compose up -d      Start Qdrant in the background
+#   docker-compose down        Stop Qdrant (data is preserved in the volume)
+#   docker-compose down -v     Stop Qdrant AND delete all stored data
+#
+# WHY DOCKER FOR QDRANT (instead of an in-process DB like ChromaDB):
+#   - Qdrant runs as a separate server, so it doesn't consume your Python
+#     process's RAM — important on a 16GB machine.
+#   - It persists data to disk independently of your Python app.
+#   - The exact same API works with Qdrant Cloud, so migrating later is
+#     just changing a URL — no code changes.
+# ============================================================================
+
+services:
+  # ── Qdrant Vector Database ────────────────────────────────────────────────
+  # Qdrant is a purpose-built database for storing and searching vectors
+  # (the numerical representations of your document chunks).
+  # It's optimized for "find me the vectors most similar to this one" queries,
+  # which is the core operation in RAG retrieval.
+  qdrant:
+    image: qdrant/qdrant:latest           # Official Qdrant Docker image (free, open-source)
+    container_name: rag_qdrant            # Friendly name so you can easily find it in Docker
+    ports:
+      - "6333:6333"                       # REST API port — our Python client talks to this
+      - "6334:6334"                       # gRPC port — faster binary protocol (used automatically
+                                          # by the Python client when available)
+    volumes:
+      - qdrant_storage:/qdrant/storage    # Persist data across container restarts.
+                                          # Without this, stopping the container would delete
+                                          # all your indexed documents — you'd have to re-embed
+                                          # everything from scratch.
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334   # Tell Qdrant which port to use for gRPC
+
+    # ── Resource Limits ────────────────────────────────────────────────────
+    # These keep Qdrant from consuming all your RAM on a 16GB machine.
+    # Qdrant is efficient — 1GB is plenty for tens of thousands of vectors.
+    # You can raise these later if your dataset grows very large.
+    deploy:
+      resources:
+        limits:
+          memory: 1G                      # Cap at 1GB RAM — leaves plenty for your IDE,
+                                          # browser, Python, and the LLM
+    restart: unless-stopped               # Auto-restart if it crashes or your machine reboots
+
+# ── Named Volumes ──────────────────────────────────────────────────────────
+# Docker manages the actual storage location. This is better than a local
+# folder bind-mount because Docker handles permissions and cleanup.
+volumes:
+  qdrant_storage:                         # Qdrant's data files live here, managed by Docker

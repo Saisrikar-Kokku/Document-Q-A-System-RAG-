@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal RAG Assistant</title>
+    <!-- Premium Web Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-wrapper">
+        <div class="app-container">
+            <!-- Sidebar for file upload -->
+            <aside class="sidebar">
+                <div class="logo">
+                    <h2>RAG<span>.ai</span></h2>
+                </div>
+                
+                <div class="chats-section">
+                    <button id="newChatBtn" class="new-chat-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        New Chat
+                    </button>
+                    <div id="chatList" class="chat-list">
+                        <div style="text-align: center; color: var(--text-secondary); font-size: 12px; margin-top: 10px;">Loading chats...</div>
+                    </div>
+                </div>
+                
+                <div class="upload-section">
+                    <h3 class="tray-title">Knowledge Base Library</h3>
+                    
+                    <div class="drop-zone" id="dropZone" data-folder="Uncategorized">
+                        <div class="drop-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        </div>
+                        <span class="drop-text">Drag & drop files</span>
+                        <span class="drop-subtext">or click to browse</span>
+                        <input type="file" id="fileInput" multiple accept=".pdf,.txt,.docx,.html">
+                    </div>
+                    
+                    <div id="uploadStatus" class="upload-status hidden">
+                        <div class="spinner"></div>
+                        <span>Uploading & Ingesting...</span>
+                    </div>
+                    <div id="uploadSuccess" class="upload-success hidden">
+                        ✅ Success!
+                    </div>
+                    
+                    <div class="file-tray">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 class="tray-title">Indexed Documents</h3>
+                            <button id="newFolderBtn" class="new-folder-btn" title="Create Folder">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+                            </button>
+                        </div>
+                        <div id="fileList" class="file-list">
+                            <!-- Files will be injected here dynamically -->
+                            <div style="text-align: center; color: var(--text-secondary); font-size: 12px; margin-top: 10px;">Loading files...</div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Content Wrapper (holds chat and PDF viewer side-by-side) -->
+            <div class="content-wrapper" id="contentWrapper">
+                <!-- Main Chat Area -->
+                <main class="chat-area" id="chatArea">
+                    <header>
+                        <h1>Chat with your Documents</h1>
+                    </header>
+                    
+                    <div class="chat-history" id="chatHistory">
+                        <!-- Welcome Message -->
+                        <div class="message ai-message">
+                            <div class="avatar">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a2 2 0 0 1 2 2c-.11.66.45 1.5 1.09 1.48.97-.04 1.76.71 1.9 1.67.06.45.6.85 1.04.85 1.05.02 1.83 1.05 1.5 2.05-.13.41.05 1.01.44 1.25.87.52.87 2 .02 2.53-.4.24-.6 1-.45 1.42.34.98-.44 2.01-1.48 2.05-.44 0-1 .4-1.05.85-.14.96-.92 1.71-1.9 1.67-.64-.02-1.2.82-1.1 1.48a2 2 0 0 1-2 2 2 2 0 0 1-2-2c.11-.66-.45-1.5-1.09-1.48-.97.04-1.76-.71-1.9-1.67-.06-.45-.6-.85-1.04-.85-1.05-.02-1.83-1.05-1.5-2.05.13-.41-.05-1.01-.44-1.25-.87-.52-.87-2-.02-2.53.4-.24.6-1 .45-1.42-.34-.98.44-2.01 1.48-2.05.44 0 1-.4 1.05-.85.14-.96.92-1.71 1.9-1.67.64.02 1.2-.82 1.1-1.48a2 2 0 0 1 2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </div>
+                            <div class="content">
+                                Hello! I am your private RAG assistant. Upload some documents on the left, and then ask me any questions about them.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="input-container">
+                        <div id="activeFilterPill" class="active-filter-pill hidden">
+                            <span class="pill-text"></span>
+                            <button class="pill-close" type="button">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                        
+                        <div id="slashSuggestions" class="slash-suggestions hidden"></div>
+                        
+                        <form id="chatForm">
+                            <input type="text" id="queryInput" placeholder="Ask a question... (Type / to filter by document)" autocomplete="off" required>
+                            <button type="submit" id="sendBtn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            </button>
+                        </form>
+                    </div>
+                </main>
+                
+                <!-- Split-Screen PDF Viewer Panel -->
+                <aside class="pdf-panel hidden" id="pdfPanel">
+                    <header class="pdf-header">
+                        <div class="pdf-title">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <span id="pdfPanelTitle">Document Viewer</span>
+                        </div>
+                        <button id="closePdfBtn" class="close-pdf-btn" title="Close PDF Viewer">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </header>
+                    <div class="pdf-frame-container">
+                        <iframe id="pdfIframe" src="" frameborder="0"></iframe>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
