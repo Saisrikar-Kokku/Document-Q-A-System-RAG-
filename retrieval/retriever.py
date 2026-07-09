@@ -17,7 +17,7 @@ WHY IT'S DESIGNED THIS WAY:
 from typing import List, Dict, Any, Optional
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
-from embeddings.embedder import Embedder, SparseEmbedder
+from embeddings.embedder import Embedder
 from vectorstore.qdrant_store import QdrantStore
 from config import RETRIEVAL_TOP_K, SIMILARITY_THRESHOLD
 
@@ -25,11 +25,8 @@ class Retriever:
     """
     Handles fetching the most relevant document chunks for a given query.
     """
-    def __init__(self, embedder: Embedder, sparse_embedder: SparseEmbedder, qdrant_store: QdrantStore):
-        # We pass these in rather than instantiating them here.
-        # This is called "Dependency Injection" and makes testing much easier.
+    def __init__(self, embedder: Embedder, qdrant_store: QdrantStore):
         self.embedder = embedder
-        self.sparse_embedder = sparse_embedder
         self.qdrant_store = qdrant_store
 
     def retrieve(
@@ -39,21 +36,8 @@ class Retriever:
         file_type_filter: Optional[str] = None,
         file_name_filter: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """
-        Retrieves the most relevant chunks for a user's question.
-        
-        Args:
-            query: The user's question (e.g., "What are the rules for the firewall?")
-            top_k: Max number of chunks to return.
-            file_type_filter: Optional extension to restrict search (e.g., ".pdf")
-            file_name_filter: Optional filename to restrict search (e.g., "Atomic Habits.pdf")
-            
-        Returns:
-            A list of dictionaries containing text, metadata, and score.
-        """
-        # 1. Convert the user's question into math vectors (Dense and Sparse)
+        # 1. Convert the user's question into math vectors (Dense)
         query_vector = self.embedder.embed_text(query)
-        sparse_vector = self.sparse_embedder.embed_text(query)
         
         # 2. Build metadata filters if requested
         qdrant_filter = None
@@ -78,16 +62,13 @@ class Retriever:
         if must_conditions:
             qdrant_filter = Filter(must=must_conditions)
             
-        # 3. Perform the Hybrid Search in Qdrant
+        # 3. Perform the Search in Qdrant
         raw_results = self.qdrant_store.search(
             dense_query=query_vector,
-            sparse_query=sparse_vector,
             limit=top_k,
             filter_conditions=qdrant_filter
         )
         
         # 4. Filter by Similarity Threshold
-        # With Reciprocal Rank Fusion (RRF), scores are no longer cosine similarities (0 to 1).
-        # They are RRF scores (e.g. 0.016). So we bypass the strict threshold for hybrid search.
-        filtered_results = raw_results # Just trust the top_k ranking from RRF
+        filtered_results = [r for r in raw_results if r["score"] >= SIMILARITY_THRESHOLD]
         return filtered_results

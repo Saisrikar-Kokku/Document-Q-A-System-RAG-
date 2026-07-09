@@ -23,7 +23,7 @@ class RAGPipeline:
     """
     The orchestrator that executes the full RAG lifecycle.
     """
-    def __init__(self, retriever: Retriever, reranker: Reranker, web_searcher: WebSearcher, llm: LLMInterface, chat_store=None, embedder=None, sparse_embedder=None, qdrant_store=None):
+    def __init__(self, retriever: Retriever, reranker: Reranker, web_searcher: WebSearcher, llm: LLMInterface, chat_store=None, embedder=None, qdrant_store=None):
         # We inject our dependencies
         self.retriever = retriever
         self.reranker = reranker
@@ -32,7 +32,6 @@ class RAGPipeline:
         self.prompt_builder = PromptBuilder()
         self.chat_store = chat_store
         self.embedder = embedder
-        self.sparse_embedder = sparse_embedder
         self.qdrant_store = qdrant_store
 
     def answer_question(self, query: str, file_type_filter: Optional[str] = None, file_name_filter: Optional[str] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
@@ -71,11 +70,10 @@ class RAGPipeline:
                 }
             
         # Step 2.5: Retrieve Memory Vectors
-        if self.qdrant_store and self.embedder and self.sparse_embedder:
+        if self.qdrant_store and self.embedder:
             print(f"Retrieving relevant memories from past chats...")
             dense_query = self.embedder.embed_text(query)
-            sparse_query = self.sparse_embedder.embed_text(query)
-            memories = self.qdrant_store.search_memory(dense_query, sparse_query, limit=3)
+            memories = self.qdrant_store.search_memory(dense_query, limit=3)
             
             for i, mem in enumerate(memories):
                 # Format memory into a chunk-like structure so prompt builder accepts it
@@ -108,12 +106,11 @@ class RAGPipeline:
             self.chat_store.add_interaction(session_id, query, answer, sources)
             
         # Convert Q&A to Memory Vector
-        if self.qdrant_store and self.embedder and self.sparse_embedder and session_id:
+        if self.qdrant_store and self.embedder and session_id:
             print("Saving interaction to memory vectors...")
             import uuid
             memory_text = f"User asked: {query}\nAI answered: {answer}"
             dense_vec = self.embedder.embed_text(memory_text)
-            sparse_vec = self.sparse_embedder.embed_text(memory_text)
             payload = {
                 "text": memory_text,
                 "session_id": session_id,
@@ -122,7 +119,7 @@ class RAGPipeline:
             }
             # Give it a random UUID
             point_id = str(uuid.uuid4())
-            self.qdrant_store.upsert_memory(point_id, payload, dense_vec, sparse_vec)
+            self.qdrant_store.upsert_memory(point_id, payload, dense_vec)
         
         # Return the answer ALONG WITH the sources used, so the user can verify it.
         # This is a critical feature for a trustworthy RAG system.
@@ -176,11 +173,10 @@ class RAGPipeline:
             yield json.dumps({"step": "prompting", "message": f"Found {len(retrieved_chunks)} relevant passages. Most relevant match comes from '{top_file}' with a confidence score of {top_score:.2f}."}) + "\n"
         
         # Retrieve Memory Vectors
-        if self.qdrant_store and self.embedder and self.sparse_embedder:
+        if self.qdrant_store and self.embedder:
             yield json.dumps({"step": "retrieving", "message": f"Searching past conversations for relevant memories..."}) + "\n"
             dense_query = self.embedder.embed_text(query)
-            sparse_query = self.sparse_embedder.embed_text(query)
-            memories = self.qdrant_store.search_memory(dense_query, sparse_query, limit=3)
+            memories = self.qdrant_store.search_memory(dense_query, limit=3)
             
             if memories:
                 yield json.dumps({"step": "retrieving", "message": f"Found {len(memories)} relevant memories from past chats."}) + "\n"
@@ -215,11 +211,10 @@ class RAGPipeline:
         if self.chat_store and session_id:
             self.chat_store.add_interaction(session_id, query, answer, sources)
             
-        if self.qdrant_store and self.embedder and self.sparse_embedder and session_id:
+        if self.qdrant_store and self.embedder and session_id:
             import uuid
             memory_text = f"User asked: {query}\nAI answered: {answer}"
             dense_vec = self.embedder.embed_text(memory_text)
-            sparse_vec = self.sparse_embedder.embed_text(memory_text)
             payload = {
                 "text": memory_text,
                 "session_id": session_id,
@@ -227,7 +222,7 @@ class RAGPipeline:
                 "answer": answer
             }
             point_id = str(uuid.uuid4())
-            self.qdrant_store.upsert_memory(point_id, payload, dense_vec, sparse_vec)
+            self.qdrant_store.upsert_memory(point_id, payload, dense_vec)
         
         # Yield the final answer
         yield json.dumps({

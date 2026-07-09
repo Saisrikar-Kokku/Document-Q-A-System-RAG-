@@ -20,7 +20,7 @@ import shutil
 import os
 from pathlib import Path
 
-from embeddings.embedder import Embedder, SparseEmbedder
+from embeddings.embedder import Embedder
 from vectorstore.qdrant_store import QdrantStore
 from retrieval.retriever import Retriever
 from retrieval.reranker import Reranker
@@ -60,13 +60,12 @@ async def startup_event():
     print("Starting up RAG backend...")
     
     embedder = Embedder()
-    sparse_embedder = SparseEmbedder()
     qdrant_store = QdrantStore()
     components["qdrant_store"] = qdrant_store
     
     s3_client = S3Client()
     components["s3_client"] = s3_client
-    retriever = Retriever(embedder, sparse_embedder, qdrant_store)
+    retriever = Retriever(embedder, qdrant_store)
     
     if LLM_PROVIDER == "cloud":
         llm = CloudLLM()
@@ -78,8 +77,8 @@ async def startup_event():
     reranker = Reranker()
     web_searcher = WebSearcher()
     chat_store = ChatStore()
-    pipeline = RAGPipeline(retriever, reranker, web_searcher, llm, chat_store, embedder, sparse_embedder, qdrant_store)
-    indexer = Indexer(embedder, sparse_embedder, qdrant_store)
+    pipeline = RAGPipeline(retriever, reranker, web_searcher, llm, chat_store, embedder, qdrant_store)
+    indexer = Indexer(embedder, qdrant_store)
     
     components["pipeline"] = pipeline
     components["indexer"] = indexer

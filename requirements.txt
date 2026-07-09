@@ -8,9 +8,6 @@
 # ============================================================================
 
 # ── Document Parsing (Phase 2) ──────────────────────────────────────────────
-# Force CPU-only PyTorch to save massive RAM/Disk space on Render Free Tier
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.13.0+cpu
 
 # Each format needs its own parser because PDFs, Word docs, and HTML have
 # completely different internal structures.
@@ -39,16 +36,7 @@ chardet>=5.0.0              # Detects text file encoding (UTF-8, Latin-1, etc.).
 # (chunk size, overlap, split boundaries) is visible and tunable.
 
 # ── Embeddings (Phase 4) ───────────────────────────────────────────────────
-
-sentence-transformers>=3.0.0  # Runs embedding models locally. This is the
-                              # library that loads the neural network and
-                              # converts text → vectors. It wraps HuggingFace
-                              # transformers with a simpler API optimized for
-                              # sentence/paragraph embeddings.
-
-# NOTE: sentence-transformers will pull in torch (PyTorch) as a dependency.
-# PyTorch is ~800MB but is the industry-standard ML framework. On a 16GB
-# machine with CPU-only, it runs fine — just the first install takes a while.
+# We use Hugging Face Cloud Inference API for embeddings now, so no local ML libs needed.
 
 # ── Vector Database Client (Phase 5) ───────────────────────────────────────
 
@@ -112,7 +100,6 @@ rich>=13.0.0                # Pretty terminal output — colored logs, progress
                             # of walls of plain text.
 
 boto3==1.43.44
-fastembed>=0.2.7
 groq>=0.9.0
 pymupdf4llm>=0.0.17
 ddgs

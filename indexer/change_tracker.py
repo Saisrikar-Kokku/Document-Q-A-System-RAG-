@@ -24,16 +24,20 @@ from typing import Dict, Any
 from config import DATA_DIR, INGESTION_INDEX_PATH
 from ingestion.registry import load_document, PARSERS
 from chunking.text_splitter import RecursiveCharacterTextSplitter
-from embeddings.embedder import Embedder, SparseEmbedder
+from embeddings.embedder import Embedder
 from vectorstore.qdrant_store import QdrantStore
 
 class Indexer:
     """
     Manages the incremental ingestion of files into the vector database.
     """
-    def __init__(self, embedder: Embedder, sparse_embedder: SparseEmbedder, qdrant_store: QdrantStore):
+    def __init__(self, embedder: Embedder, qdrant_store: QdrantStore):
+        """
+        Args:
+            embedder: Instance of Embedder
+            qdrant_store: Instance of QdrantStore
+        """
         self.embedder = embedder
-        self.sparse_embedder = sparse_embedder
         self.qdrant_store = qdrant_store
         self.splitter = RecursiveCharacterTextSplitter()
         self.index_path = INGESTION_INDEX_PATH
@@ -148,9 +152,8 @@ class Indexer:
                         progress_callback(f"  Embedding & saving batch {i//batch_size + 1}/{(len(chunks) + batch_size - 1)//batch_size}...")
                         
                     dense_vectors = self.embedder.embed_batch(text_batch)
-                    sparse_vectors = self.sparse_embedder.embed_batch(text_batch)
                     
-                    self.qdrant_store.upsert_chunks(chunk_batch, dense_vectors, sparse_vectors)
+                    self.qdrant_store.upsert_chunks(chunk_batch, dense_vectors)
                 
                 # 5. Mark as processed
                 index_data[key] = current_hash

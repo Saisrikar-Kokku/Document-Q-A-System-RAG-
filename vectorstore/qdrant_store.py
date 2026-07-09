@@ -83,11 +83,6 @@ class QdrantStore:
                             size=EMBEDDING_DIMENSION, 
                             distance=models.Distance.COSINE
                         )
-                    },
-                    sparse_vectors_config={
-                        "sparse": models.SparseVectorParams(
-                            index=models.SparseIndexParams(on_disk=False)
-                        )
                     }
                 )
                 
@@ -112,18 +107,18 @@ class QdrantStore:
         md5_hash = hashlib.md5(unique_string.encode('utf-8')).hexdigest()
         return f"{md5_hash[:8]}-{md5_hash[8:12]}-{md5_hash[12:16]}-{md5_hash[16:20]}-{md5_hash[20:32]}"
 
-    def upsert_chunks(self, chunks: List[Chunk], dense_vectors: List[List[float]], sparse_vectors: List[Dict[str, List[Any]]]):
+    def upsert_chunks(self, chunks: List[Chunk], dense_vectors: List[List[float]]):
         """
-        Uploads chunks, their dense vectors, and their sparse vectors to Qdrant.
+        Uploads chunks and their dense vectors to Qdrant.
         """
-        if len(chunks) != len(dense_vectors) or len(chunks) != len(sparse_vectors):
-            raise ValueError("Number of chunks, dense vectors, and sparse vectors must match.")
+        if len(chunks) != len(dense_vectors):
+            raise ValueError("Number of chunks and dense vectors must match.")
             
         if not chunks:
             return
 
         points = []
-        for chunk, dense_vec, sparse_vec in zip(chunks, dense_vectors, sparse_vectors):
+        for chunk, dense_vec in zip(chunks, dense_vectors):
             point_id = self._generate_point_id(
                 chunk.metadata.source_path, 
                 chunk.chunk_index,
@@ -145,11 +140,7 @@ class QdrantStore:
             
             # Since we have named vectors, we pass them as a dictionary
             vectors_dict = {
-                "dense": dense_vec,
-                "sparse": models.SparseVector(
-                    indices=sparse_vec["indices"], 
-                    values=sparse_vec["values"]
-                )
+                "dense": dense_vec
             }
             
             points.append(PointStruct(id=point_id, vector=vectors_dict, payload=payload))
@@ -168,40 +159,20 @@ class QdrantStore:
                 print(f"      Failed to upsert batch {i//batch_size + 1}: {e}")
                 raise e
 
-    def search(self, dense_query: List[float], sparse_query: Dict[str, List[Any]], limit: int = 5, filter_conditions: Filter = None) -> List[Dict[str, Any]]:
+    def search(self, dense_query: List[float], limit: int = 5, filter_conditions: Filter = None) -> List[Dict[str, Any]]:
         """
-        Performs a Hybrid Search using Reciprocal Rank Fusion (RRF).
+        Performs a Dense Search in Qdrant.
         """
-        # Prefetch queries both the dense and sparse vectors simultaneously
-        prefetch = [
-            models.Prefetch(
-                query=dense_query,
-                using="dense",
-                limit=limit * 2,
-                filter=filter_conditions
-            ),
-            models.Prefetch(
-                query=models.SparseVector(
-                    indices=sparse_query["indices"],
-                    values=sparse_query["values"]
-                ),
-                using="sparse",
-                limit=limit * 2,
-                filter=filter_conditions
-            )
-        ]
-        
-        # Then fuses the rankings using RRF
-        results = self.client.query_points(
+        results = self.client.search(
             collection_name=self.collection_name,
-            prefetch=prefetch,
-            query=models.FusionQuery(fusion=models.Fusion.RRF),
+            query_vector=("dense", dense_query),
+            query_filter=filter_conditions,
             limit=limit,
             with_payload=True
         )
         
         formatted_results = []
-        for hit in results.points:
+        for hit in results:
             formatted_results.append({
                 "score": hit.score,
                 "text": hit.payload["text"],
@@ -229,16 +200,12 @@ class QdrantStore:
             )
         )
 
-    def upsert_memory(self, point_id: str, payload: dict, dense_vec: list, sparse_vec: dict):
+    def upsert_memory(self, point_id: str, payload: dict, dense_vec: list):
         """
         Saves a chat interaction into the chat_history collection.
         """
         vectors_dict = {
-            "dense": dense_vec,
-            "sparse": models.SparseVector(
-                indices=sparse_vec["indices"], 
-                values=sparse_vec["values"]
-            )
+            "dense": dense_vec
         }
         point = PointStruct(id=point_id, vector=vectors_dict, payload=payload)
         self.client.upsert(
@@ -246,38 +213,20 @@ class QdrantStore:
             points=[point]
         )
 
-    def search_memory(self, dense_query: list, sparse_query: dict, limit: int = 5, filter_conditions: Filter = None) -> list:
+    def search_memory(self, dense_query: list, limit: int = 5, filter_conditions: Filter = None) -> list:
         """
-        Searches the chat_history collection.
+        Searches the chat_history collection using Dense Search.
         """
-        prefetch = [
-            models.Prefetch(
-                query=dense_query,
-                using="dense",
-                limit=limit * 2,
-                filter=filter_conditions
-            ),
-            models.Prefetch(
-                query=models.SparseVector(
-                    indices=sparse_query["indices"],
-                    values=sparse_query["values"]
-                ),
-                using="sparse",
-                limit=limit * 2,
-                filter=filter_conditions
-            )
-        ]
-        
-        results = self.client.query_points(
+        results = self.client.search(
             collection_name="chat_history",
-            prefetch=prefetch,
-            query=models.FusionQuery(fusion=models.Fusion.RRF),
+            query_vector=("dense", dense_query),
+            query_filter=filter_conditions,
             limit=limit,
             with_payload=True
         )
         
         formatted_results = []
-        for hit in results.points:
+        for hit in results:
             formatted_results.append({
                 "score": hit.score,
                 "text": hit.payload.get("text", ""),
